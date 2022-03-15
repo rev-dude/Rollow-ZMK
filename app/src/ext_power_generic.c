@@ -201,7 +201,12 @@ static int ext_power_generic_init(const struct device *dev) {
 
         ext_power_enable(dev);
     }
-#elif IS_ENABLED(CONFIG_ZMK_USB_EXT_POWER_ONLY)
+#else
+    // Default to the ext_power being open when no settings
+    ext_power_enable(dev);
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_USB_EXT_POWER_ONLY)
     LOG_DBG("Toggling usb ext power only on init.");
     usb_ext_power_only_toggle();
 #endif
