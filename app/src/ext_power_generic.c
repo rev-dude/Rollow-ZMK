@@ -134,29 +134,30 @@ struct settings_handler ext_power_conf = {.name = "ext_power/state",
 #endif
 
 #if IS_ENABLED(CONFIG_ZMK_USB_EXT_POWER_ONLY)
-void ext_power_toggle() {
+void usb_ext_power_only_toggle() {
     const struct device *ext_power = device_get_binding("EXT_POWER");
+    const int ext_power_enabled = ext_power_get(ext_power);
 
-    if (zmk_usb_is_powered() == true) {
+    if (zmk_usb_is_powered() == true && ext_power_enabled == false) {
         LOG_DBG("USB power was connected. Enabling external power.");
         ext_power_enable(ext_power);
-    } else {
+    } else if (zmk_usb_is_powered() == false && ext_power_enabled == true) {
         LOG_DBG("USB power was removed. Disabling external power.");
         ext_power_disable(ext_power);
     }
 }
 
-static int ext_power_event_listener(const zmk_event_t *eh) {
+static int usb_ext_power_only_event_listener(const zmk_event_t *eh) {
     if (as_zmk_usb_conn_state_changed(eh)) {
         LOG_DBG("USB conn state changed: %d", zmk_usb_is_powered());
 
-        ext_power_toggle();
+        usb_ext_power_only_toggle();
     }
 
     return -ENOTSUP;
 }
 
-ZMK_LISTENER(ext_power, ext_power_event_listener);
+ZMK_LISTENER(ext_power, usb_ext_power_only_event_listener);
 
 ZMK_SUBSCRIPTION(ext_power, zmk_usb_conn_state_changed);
 #endif
@@ -201,7 +202,8 @@ static int ext_power_generic_init(const struct device *dev) {
         ext_power_enable(dev);
     }
 #elif IS_ENABLED(CONFIG_ZMK_USB_EXT_POWER_ONLY)
-    ext_power_toggle();
+    LOG_DBG("Toggling usb ext power only on init.");
+    usb_ext_power_only_toggle();
 #endif
 
     if (config->init_delay_ms) {
