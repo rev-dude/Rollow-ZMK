@@ -154,7 +154,7 @@ static int usb_ext_power_only_event_listener(const zmk_event_t *eh) {
         usb_ext_power_only_toggle();
     }
 
-    return -ENOTSUP;
+    return 0;
 }
 
 ZMK_LISTENER(ext_power, usb_ext_power_only_event_listener);
