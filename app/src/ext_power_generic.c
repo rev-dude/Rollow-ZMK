@@ -147,6 +147,9 @@ static int ext_power_toggle(const struct device *dev, bool enable) {
 }
 
 static int ext_power_event_listener(const zmk_event_t *eh) {
+
+    LOG_DBG("External power event listener fired: %d", zmk_usb_is_powered());
+
     if (as_zmk_usb_conn_state_changed(eh)) {
         const struct device *ext_power = device_get_binding("EXT_POWER");
         return ext_power_toggle(ext_power, zmk_usb_is_powered());
