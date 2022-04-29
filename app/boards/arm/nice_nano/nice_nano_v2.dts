@@ -10,13 +10,14 @@
 / {
 	chosen {
 		zmk,battery = &vbatt;
+		zmk,default-power-domain = &ext_power_domain;
 	};
 
-	ext-power {
-		compatible = "zmk,ext-power-generic";
+	ext_power_domain: ext-power {
+		compatible = "power-domain-gpio";
 		label = "EXT_POWER";
-		control-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
-		init-delay-ms = <50>;
+		enable-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <50000>;
 	};
 
 	vbatt: vbatt {

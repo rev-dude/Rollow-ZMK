@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#define DT_DRV_COMPAT zmk_ext_power_generic
+#define DT_DRV_COMPAT power_domain_gpio
 
 #include <stdio.h>
 #include <device.h>
@@ -127,6 +127,8 @@ struct settings_handler ext_power_conf = {.name = "ext_power/state",
 #endif
 
 static int ext_power_generic_init(const struct device *dev) {
+    LOG_ERR("In ext_power_generic_init");
+
     struct ext_power_generic_data *data = dev->data;
     const struct ext_power_generic_config *config = dev->config;
 
@@ -175,6 +177,9 @@ static int ext_power_generic_init(const struct device *dev) {
 
 #ifdef CONFIG_PM_DEVICE
 static int ext_power_generic_pm_action(const struct device *dev, enum pm_device_action action) {
+
+    LOG_ERR("In ext_power_generic_pm_action with action: %d", action);
+
     switch (action) {
     case PM_DEVICE_ACTION_TURN_ON:
         ext_power_generic_enable(dev);
@@ -189,10 +194,10 @@ static int ext_power_generic_pm_action(const struct device *dev, enum pm_device_
 #endif /* CONFIG_PM_DEVICE */
 
 static const struct ext_power_generic_config config = {
-    .label = DT_INST_GPIO_LABEL(0, control_gpios),
-    .pin = DT_INST_GPIO_PIN(0, control_gpios),
-    .flags = DT_INST_GPIO_FLAGS(0, control_gpios),
-    .init_delay_ms = DT_INST_PROP_OR(0, init_delay_ms, 0)};
+    .label = DT_INST_GPIO_LABEL(0, enable_gpios),
+    .pin = DT_INST_GPIO_PIN(0, enable_gpios),
+    .flags = DT_INST_GPIO_FLAGS(0, enable_gpios),
+    .init_delay_ms = DT_INST_PROP_OR(0, startup_delay_us, 0) / 1000};
 
 static struct ext_power_generic_data data = {
     .status = false,
