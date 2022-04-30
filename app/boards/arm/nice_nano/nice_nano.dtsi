@@ -47,6 +47,7 @@
 	compatible = "nordic,nrf-twi";
 	sda-pin = <17>;
 	scl-pin = <20>;
+	power-domain = <&ext_power_domain>;
 };
 
 &uart0 {
