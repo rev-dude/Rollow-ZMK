@@ -180,6 +180,10 @@ static int ext_power_generic_pm_action(const struct device *dev, enum pm_device_
 
     LOG_ERR("In ext_power_generic_pm_action with action: %d", action);
 
+    LOG_ERR("Doing children run", action);
+    pm_device_children_action_run(dev, action, NULL);
+    LOG_ERR("Finished children run", action);
+
     switch (action) {
     case PM_DEVICE_ACTION_TURN_ON:
         ext_power_generic_enable(dev);
