@@ -16,13 +16,16 @@
 
 #include <drivers/led_strip.h>
 #include <drivers/ext_power.h>
+#include <pm/device.h>
 
 #include <zmk/rgb_underglow.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
+#define STRIP DT_CHOSEN(zmk_underglow)
 #define STRIP_LABEL DT_LABEL(DT_CHOSEN(zmk_underglow))
 #define STRIP_NUM_PIXELS DT_PROP(DT_CHOSEN(zmk_underglow), chain_length)
+#define STRIP_PD_LABEL DT_LABEL(DT_PROP(DT_CHOSEN(zmk_underglow), power_domain))
 
 #define HUE_MAX 360
 #define SAT_MAX 100
@@ -231,6 +234,8 @@ static int zmk_rgb_underglow_init(const struct device *_arg) {
         LOG_ERR("LED strip device %s not found", STRIP_LABEL);
         return -EINVAL;
     }
+
+    // LOG_ERR("LED strip has power domain: %s", STRIP_PD_LABEL);
 
 #if IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_EXT_POWER)
     ext_power = device_get_binding("EXT_POWER");
@@ -443,5 +448,22 @@ int zmk_rgb_underglow_change_spd(int direction) {
 
     return zmk_rgb_underglow_save_state();
 }
+
+#ifdef CONFIG_PM_DEVICE
+static int zmk_rgb_underglow_pm_action(const struct device *dev, enum pm_device_action action) {
+
+    LOG_ERR("In zmk_rgb_underglow_pm_action with action: %d", action);
+
+    switch (action) {
+        case PM_DEVICE_ACTION_TURN_ON:
+            return 0;
+        case PM_DEVICE_ACTION_TURN_OFF:
+            return 0;
+        default:
+            return -ENOTSUP;
+    }
+}
+PM_DEVICE_DEFINE(STRIP, zmk_rgb_underglow_pm_action);
+#endif /* CONFIG_PM_DEVICE */
 
 SYS_INIT(zmk_rgb_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

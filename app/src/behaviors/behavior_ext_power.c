@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#define STRIP DT_CHOSEN(zmk_underglow)
+#define STRIP_LABEL DT_LABEL(DT_CHOSEN(zmk_underglow))
 #define DT_DRV_COMPAT zmk_behavior_ext_power
 #define DEFAULT_POWER_DOMAIN DT_CHOSEN(zmk_default_power_domain)
 
@@ -46,9 +48,35 @@ on_keymap_binding_convert_central_state_dependent_params(struct zmk_behavior_bin
     return 0;
 }
 
+int print_debug_info_underglow() {
+    LOG_ERR("In print_debug_info");
+
+    static const struct device *led_strip;
+    led_strip = device_get_binding(STRIP_LABEL);
+    if (led_strip) {
+        LOG_ERR("Found LED strip device %s", STRIP_LABEL);
+    } else {
+        LOG_ERR("LED strip device %s not found", STRIP_LABEL);
+        return -EINVAL;
+    }
+
+    bool on_pd = pm_device_on_power_domain(led_strip);
+    LOG_ERR("Underglow on power domain: %d", on_pd);
+
+    enum pm_device_state pm_state;
+    if(pm_device_state_get(led_strip, &pm_state) != 0) {
+        LOG_ERR("Could not get pm device state for underglow");
+        return -EIO;
+    } else {
+        LOG_ERR("Underglow pm state: %d", pm_state);
+    }
+}
+
 static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
                                      struct zmk_behavior_binding_event event) {
     LOG_ERR("In on_keymap_binding_pressed with param: %d", binding->param1);
+
+    print_debug_info_underglow();
     const struct device *ext_power = DEVICE_DT_GET(DEFAULT_POWER_DOMAIN);
 
     if (ext_power == NULL) {
