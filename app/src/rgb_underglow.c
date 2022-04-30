@@ -22,6 +22,8 @@
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
+#define DT_DRV_COMPAT worldsemi_ws2812_spi
+
 #define STRIP DT_CHOSEN(zmk_underglow)
 #define STRIP_LABEL DT_LABEL(DT_CHOSEN(zmk_underglow))
 #define STRIP_NUM_PIXELS DT_PROP(DT_CHOSEN(zmk_underglow), chain_length)
@@ -463,7 +465,7 @@ static int zmk_rgb_underglow_pm_action(const struct device *dev, enum pm_device_
             return -ENOTSUP;
     }
 }
-PM_DEVICE_DEFINE(STRIP, zmk_rgb_underglow_pm_action);
+PM_DEVICE_DT_INST_DEFINE(0, zmk_rgb_underglow_pm_action);
 #endif /* CONFIG_PM_DEVICE */
 
-SYS_INIT(zmk_rgb_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+DEVICE_DT_INST_DEFINE(0, zmk_rgb_underglow_init, PM_DEVICE_DT_INST_GET(0), NULL, NULL, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY, NULL);
