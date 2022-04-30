@@ -6,6 +6,8 @@
 
 #define STRIP DT_CHOSEN(zmk_underglow)
 #define STRIP_LABEL DT_LABEL(DT_CHOSEN(zmk_underglow))
+#define ZMK_DISPLAY_NAME CONFIG_LVGL_DISPLAY_DEV_NAME
+
 #define DT_DRV_COMPAT zmk_behavior_ext_power
 #define DEFAULT_POWER_DOMAIN DT_CHOSEN(zmk_default_power_domain)
 
@@ -72,11 +74,37 @@ int print_debug_info_underglow() {
     }
 }
 
+int print_debug_info_display() {
+    LOG_ERR("In print_debug_info");
+
+    static const struct device *display;
+    display = device_get_binding(ZMK_DISPLAY_NAME);
+    if (display == NULL) {
+        LOG_ERR("Failed to find display device: %s", ZMK_DISPLAY_NAME);
+        return -EINVAL;
+    } else {
+        LOG_ERR("Found display device %s", ZMK_DISPLAY_NAME);
+    }
+
+    bool on_pd = pm_device_on_power_domain(display);
+    LOG_ERR("Display on power domain: %d", on_pd);
+
+    enum pm_device_state pm_state;
+    if(pm_device_state_get(display, &pm_state) != 0) {
+        LOG_ERR("Could not get pm device state for display");
+        return -EIO;
+    } else {
+        LOG_ERR("Display pm state: %d", pm_state);
+    }
+}
+
 static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
                                      struct zmk_behavior_binding_event event) {
     LOG_ERR("In on_keymap_binding_pressed with param: %d", binding->param1);
 
     print_debug_info_underglow();
+    print_debug_info_display();
+
     const struct device *ext_power = DEVICE_DT_GET(DEFAULT_POWER_DOMAIN);
 
     if (ext_power == NULL) {
