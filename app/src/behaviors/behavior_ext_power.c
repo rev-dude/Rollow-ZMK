@@ -112,16 +112,36 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
         return -EIO;
     }
 
-    switch (binding->param1) {
-        case EXT_POWER_OFF_CMD:
-            return pm_device_action_run(ext_power, PM_DEVICE_ACTION_TURN_OFF);
-        case EXT_POWER_ON_CMD:
-            return pm_device_action_run(ext_power, PM_DEVICE_ACTION_TURN_ON);
-        default:
-            LOG_ERR("Unknown ext_power command: %d", binding->param1);
+    LOG_ERR("Got ext_power: %p", ext_power);
+    enum pm_device_state pm_state;
+    if(pm_device_state_get(ext_power, &pm_state) != 0) {
+        LOG_ERR("Could not get pm device state for ext_power");
+        return -EIO;
+    } else {
+        LOG_ERR("Ext power pm state: %s", pm_device_state_str(pm_state));
     }
 
-    return -ENOTSUP;
+    switch (binding->param1) {
+        case EXT_POWER_OFF_CMD:
+            LOG_ERR("Running EXT_POWER_OFF_CMD");
+            pm_device_action_run(ext_power, PM_DEVICE_ACTION_TURN_OFF);
+            break;
+        case EXT_POWER_ON_CMD:
+            LOG_ERR("Running EXT_POWER_ON_CMD");
+            pm_device_action_run(ext_power, PM_DEVICE_ACTION_TURN_ON);
+            break;
+        default:
+            LOG_ERR("Unknown ext_power command: %d", binding->param1);
+            return -ENOTSUP;
+    }
+
+    if(pm_device_state_get(ext_power, &pm_state) != 0) {
+        LOG_ERR("Finished ext power keybind, but could not get pm device state for ext_power");
+    } else {
+        LOG_ERR("Finished ext power keybind with new state: %s; Lock status: %d; Busy status: %d", pm_device_state_str(pm_state), pm_device_state_is_locked(ext_power), pm_device_is_busy(ext_power));
+    }
+
+    return 0;
 }
 
 static int on_keymap_binding_released(struct zmk_behavior_binding *binding,

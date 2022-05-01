@@ -180,20 +180,41 @@ static int ext_power_generic_pm_action(const struct device *dev, enum pm_device_
 
     LOG_ERR("In ext_power_generic_pm_action with action: %d", action);
 
-    LOG_ERR("Doing children run", action);
-    pm_device_children_action_run(dev, action, NULL);
-    LOG_ERR("Finished children run", action);
-
     switch (action) {
-    case PM_DEVICE_ACTION_TURN_ON:
-        ext_power_generic_enable(dev);
-        return 0;
-    case PM_DEVICE_ACTION_TURN_OFF:
-        ext_power_generic_disable(dev);
-        return 0;
-    default:
-        return -ENOTSUP;
+        case PM_DEVICE_ACTION_TURN_ON:
+            LOG_ERR("Enabling power");
+            ext_power_generic_enable(dev);
+
+            // Wait a little before re-initing children
+            k_sleep(K_MSEC(50));
+
+            LOG_ERR("Doing children ON run");
+            pm_device_children_action_run(dev, action, NULL);
+            LOG_ERR("Finished children ON run");
+
+            break;
+        case PM_DEVICE_ACTION_TURN_OFF:
+            LOG_ERR("Doing children OFF run");
+            pm_device_children_action_run(dev, action, NULL);
+            LOG_ERR("Finished children OFF run");
+
+            LOG_ERR("Disabling power");
+            ext_power_generic_disable(dev);
+            break;
+        default:
+            LOG_ERR("Unhandled state for action: %d", action);
+            return -ENOTSUP;
     }
+
+    enum pm_device_state pm_state;
+    if(pm_device_state_get(dev, &pm_state) != 0) {
+        LOG_ERR("Finished ext_power_generic_pm_action, but could not get pm device state for ext_power");
+    } else {
+        LOG_ERR("Finished ext_power_generic_pm_action with new state: %s; Lock status: %d; Busy status: %d; Busy status: %d", pm_device_state_str(pm_state), pm_device_state_is_locked(dev), pm_device_is_busy(dev));
+
+    }
+
+    return 0;
 }
 #endif /* CONFIG_PM_DEVICE */
 
