@@ -21,18 +21,9 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 static int behavior_sensor_rotate_key_press_init(const struct device *dev) { return 0; };
 
 static int on_sensor_binding_triggered(struct zmk_behavior_binding *binding,
-                                       const struct device *sensor, int64_t timestamp) {
-    struct sensor_value value;
-    int err;
+                                       const struct sensor_value value, int64_t timestamp) {
     uint32_t keycode;
     LOG_DBG("inc keycode 0x%02X dec keycode 0x%02X", binding->param1, binding->param2);
-
-    err = sensor_channel_get(sensor, SENSOR_CHAN_ROTATION, &value);
-
-    if (err) {
-        LOG_WRN("Failed to ge sensor rotation value: %d", err);
-        return err;
-    }
 
     switch (value.val1) {
     case 1:
@@ -59,9 +50,10 @@ static const struct behavior_driver_api behavior_sensor_rotate_key_press_driver_
     .sensor_binding_triggered = on_sensor_binding_triggered};
 
 #define KP_INST(n)                                                                                 \
-    DEVICE_DT_INST_DEFINE(n, behavior_sensor_rotate_key_press_init, device_pm_control_nop, NULL,   \
-                          NULL, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,                  \
-                          &behavior_sensor_rotate_key_press_driver_api);
+    DEVICE_AND_API_INIT(behavior_sensor_rotate_key_press_##n, DT_INST_LABEL(n),                    \
+                        behavior_sensor_rotate_key_press_init, NULL, NULL, APPLICATION,            \
+                        CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,                                       \
+                        &behavior_sensor_rotate_key_press_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(KP_INST)
 

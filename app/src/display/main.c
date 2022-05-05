@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <kernel.h>
 #include <init.h>
 #include <device.h>
 #include <devicetree.h>
@@ -22,55 +21,30 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #define ZMK_DISPLAY_NAME CONFIG_LVGL_DISPLAY_DEV_NAME
 
 static const struct device *display;
-static bool initialized = false;
 
 static lv_obj_t *screen;
 
 __attribute__((weak)) lv_obj_t *zmk_display_status_screen() { return NULL; }
 
-void display_tick_cb(struct k_work *work) { lv_task_handler(); }
-
-#define TICK_MS 10
+void display_tick_cb(struct k_work *work) {
+    lv_tick_inc(10);
+    lv_task_handler();
+}
 
 K_WORK_DEFINE(display_tick_work, display_tick_cb);
 
-#if IS_ENABLED(CONFIG_ZMK_DISPLAY_WORK_QUEUE_DEDICATED)
-
-K_THREAD_STACK_DEFINE(display_work_stack_area, CONFIG_ZMK_DISPLAY_DEDICATED_THREAD_STACK_SIZE);
-
-static struct k_work_q display_work_q;
-
-#endif
-
-struct k_work_q *zmk_display_work_q() {
-#if IS_ENABLED(CONFIG_ZMK_DISPLAY_WORK_QUEUE_DEDICATED)
-    return &display_work_q;
-#else
-    return &k_sys_work_q;
-#endif
-}
-
-void display_timer_cb() {
-    lv_tick_inc(TICK_MS);
-    k_work_submit_to_queue(zmk_display_work_q(), &display_tick_work);
-}
-
-void blank_display_cb(struct k_work *work) { display_blanking_on(display); }
-
-void unblank_display_cb(struct k_work *work) { display_blanking_off(display); }
+void display_timer_cb() { k_work_submit(&display_tick_work); }
 
 K_TIMER_DEFINE(display_timer, display_timer_cb, NULL);
-K_WORK_DEFINE(blank_display_work, blank_display_cb);
-K_WORK_DEFINE(unblank_display_work, unblank_display_cb);
 
 static void start_display_updates() {
     if (display == NULL) {
         return;
     }
 
-    k_work_submit_to_queue(zmk_display_work_q(), &unblank_display_work);
+    display_blanking_off(display);
 
-    k_timer_start(&display_timer, K_MSEC(TICK_MS), K_MSEC(TICK_MS));
+    k_timer_start(&display_timer, K_MSEC(10), K_MSEC(10));
 }
 
 static void stop_display_updates() {
@@ -78,12 +52,10 @@ static void stop_display_updates() {
         return;
     }
 
-    k_work_submit_to_queue(zmk_display_work_q(), &blank_display_work);
+    display_blanking_on(display);
 
     k_timer_stop(&display_timer);
 }
-
-int zmk_display_is_initialized() { return initialized; }
 
 int zmk_display_init() {
     LOG_DBG("");
@@ -94,12 +66,6 @@ int zmk_display_init() {
         return -EINVAL;
     }
 
-#if IS_ENABLED(CONFIG_ZMK_DISPLAY_WORK_QUEUE_DEDICATED)
-    k_work_q_start(&display_work_q, display_work_stack_area,
-                   K_THREAD_STACK_SIZEOF(display_work_stack_area),
-                   CONFIG_ZMK_DISPLAY_DEDICATED_THREAD_PRIORITY);
-#endif
-
     screen = zmk_display_status_screen();
 
     if (screen == NULL) {
@@ -109,9 +75,9 @@ int zmk_display_init() {
 
     lv_scr_load(screen);
 
-    start_display_updates();
+    lv_task_handler();
 
-    initialized = true;
+    start_display_updates();
 
     LOG_DBG("");
     return 0;

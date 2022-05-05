@@ -4,11 +4,18 @@
 if SHIELD_SOFLE_LEFT
 
 config ZMK_KEYBOARD_NAME
-	default "Sofle"
+	default "Sofle Left"
 
 config ZMK_SPLIT_BLE_ROLE_CENTRAL
 	default y
 	
+endif
+
+if SHIELD_SOFLE_RIGHT
+
+config ZMK_KEYBOARD_NAME
+	default "Sofle Right"
+
 endif
 
 if SHIELD_SOFLE_LEFT || SHIELD_SOFLE_RIGHT

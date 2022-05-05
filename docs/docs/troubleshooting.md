@@ -3,7 +3,9 @@ title: Troubleshooting
 sidebar_title: Troubleshooting
 ---
 
-The following page provides suggestions for common errors that may occur during firmware compilation or other issues with keyboard usage. If the information provided is insufficient to resolve the issue, feel free to seek out help from the [ZMK Discord](https://zmk.dev/community/discord/invite).
+### Summary
+
+The following page provides suggestions for common errors that may occur during firmware compilation. If the information provided is insufficient to resolve the issue, feel free to seek out help from the [ZMK Discord](https://zmkfirmware.dev/community/discord/invite).
 
 ### File Transfer Error
 
@@ -24,7 +26,7 @@ Variations of the warnings shown below occur when flashing the `<firmware>.uf2` 
 ### CMake Error
 
 An error along the lines of `CMake Error at (zmk directory)/zephyr/cmake/generic_toolchain.cmake:64 (include): include could not find load file:` during firmware compilation indicates that the Zephyr Environment Variables are not properly defined.
-For more information, click [here](../docs/development/setup.md#environment-variables).
+For more information, click [here](../docs/development/setup#environment-variables).
 
 ### dtlib.DTError
 
@@ -53,7 +55,7 @@ Since then, a much simpler procedure of performing a bluetooth reset for split k
 **New Procedure:**
 
 1. [Open the GitHub `Actions` tab and select the `Build` workflow](https://github.com/zmkfirmware/zmk/actions?query=workflow%3ABuild+branch%3Amain+event%3Apush).
-1. Find one of the 'results' for which the core-coverage job was successfully run, indicated by a green checkmark in the core-coverage bubble.
+1. Select the top 'result' on that page.
 1. From the next page under "Artifacts", download the `$boardname-settings_reset-zmk` zip file.
 1. Unzip the downloaded file.
 1. Put each half of the split keyboard into bootloader mode
@@ -61,10 +63,6 @@ Since then, a much simpler procedure of performing a bluetooth reset for split k
    to avoid accidental bonding between the halves.
 1. Repeat step 3 with the other half of the split keyboard
 1. Flash the actual image for each half of the split keyboard (e.g `my_board_left.uf2` to the left half, `my_board_right.uf2` to the right half)
-
-| ![Successful core-coverage Job](../docs/assets/troubleshooting/splitpairing/corecoverage.png) |
-| :-------------------------------------------------------------------------------------------: |
-|  An example of a successful core-coverage job which will produce a settings_reset firmware.   |
 
 After completing these steps, pair the halves of the split keyboard together by resetting them at the same time. Most commonly, this is done by grounding the reset pins
 for each of your keyboard's microcontrollers or pressing the reset buttons at the same time.
@@ -78,7 +76,3 @@ CONFIG_BT_CTLR_TX_PWR_PLUS_8=y
 ```
 
 For the `nRF52840`, the value `PLUS_8` can be set to any multiple of four between `MINUS_20` and `PLUS_8`. The default value for this config is `0`, but if you are having connection issues it is recommended to set it to `PLUS_8` because the power consumption difference is negligible. For more information on changing the transmit power of your BLE device, please refer to [the Zephyr docs.](https://docs.zephyrproject.org/latest/reference/kconfig/CONFIG_BT_CTLR_TX_PWR_PLUS_8.html)
-
-### Other notes and warnings
-
-- If you want to test bluetooth output on your keyboard and are powering it through the USB connection rather than a battery, you will be able to pair with a host device but may not see keystrokes sent. In this case you need to use the [output selection behavior](../docs/behaviors/outputs.md) to prefer sending keystrokes over bluetooth rather than USB. This might be necessary even if you are not powering from a device capable of receiving USB inputs, such as a USB charger.

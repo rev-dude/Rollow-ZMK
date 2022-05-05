@@ -6,7 +6,13 @@
 
 #pragma once
 
-#include <zmk/endpoints_types.h>
+#include <zmk/keys.h>
+#include <zmk/hid.h>
+
+enum zmk_endpoint {
+    ZMK_ENDPOINT_USB,
+    ZMK_ENDPOINT_BLE,
+};
 
 int zmk_endpoints_select(enum zmk_endpoint endpoint);
 int zmk_endpoints_toggle();

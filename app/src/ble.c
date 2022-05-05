@@ -7,7 +7,6 @@
 #include <device.h>
 #include <init.h>
 
-#include <errno.h>
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -36,23 +35,9 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/event_manager.h>
 #include <zmk/events/ble_active_profile_changed.h>
 
-#define IS_HOST_PERIPHERAL                                                                         \
-    (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_ROLE_CENTRAL))
-#define IS_SPLIT_PERIPHERAL                                                                        \
-    (IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_ROLE_CENTRAL))
-
-#define DO_PASSKEY_ENTRY (IS_ENABLED(CONFIG_ZMK_BLE_PASSKEY_ENTRY) && !IS_SPLIT_PERIPHERAL)
-
-#if DO_PASSKEY_ENTRY
-#include <zmk/events/keycode_state_changed.h>
-
-#define PASSKEY_DIGITS 6
-
 static struct bt_conn *auth_passkey_entry_conn;
-static uint8_t passkey_entries[PASSKEY_DIGITS] = {};
+static uint8_t passkey_entries[6] = {0, 0, 0, 0, 0, 0};
 static uint8_t passkey_digit = 0;
-
-#endif
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_ROLE_CENTRAL)
 #define PROFILE_COUNT (CONFIG_BT_MAX_PAIRED - 1)
@@ -72,13 +57,18 @@ enum advertising_type {
     BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONNECTABLE | BT_LE_ADV_OPT_ONE_TIME, BT_GAP_ADV_FAST_INT_MIN_2, \
                     BT_GAP_ADV_FAST_INT_MAX_2, NULL)
 
-static struct zmk_ble_profile profiles[ZMK_BLE_PROFILE_COUNT];
+static struct zmk_ble_profile profiles[PROFILE_COUNT];
 static uint8_t active_profile;
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
 BUILD_ASSERT(DEVICE_NAME_LEN <= 16, "ERROR: BLE device name is too long. Max length: 16");
+
+#define IS_HOST_PERIPHERAL                                                                         \
+    (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_ROLE_CENTRAL))
+#define IS_SPLIT_PERIPHERAL                                                                        \
+    (IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_ROLE_CENTRAL))
 
 static const struct bt_data zmk_ble_ad[] = {
 #if IS_HOST_PERIPHERAL
@@ -260,10 +250,6 @@ static int ble_save_profile() {
 }
 
 int zmk_ble_prof_select(uint8_t index) {
-    if (index >= ZMK_BLE_PROFILE_COUNT) {
-        return -ERANGE;
-    }
-
     LOG_DBG("profile %d", index);
     if (active_profile == index) {
         return 0;
@@ -281,13 +267,12 @@ int zmk_ble_prof_select(uint8_t index) {
 
 int zmk_ble_prof_next() {
     LOG_DBG("");
-    return zmk_ble_prof_select((active_profile + 1) % ZMK_BLE_PROFILE_COUNT);
+    return zmk_ble_prof_select((active_profile + 1) % PROFILE_COUNT);
 };
 
 int zmk_ble_prof_prev() {
     LOG_DBG("");
-    return zmk_ble_prof_select((active_profile + ZMK_BLE_PROFILE_COUNT - 1) %
-                               ZMK_BLE_PROFILE_COUNT);
+    return zmk_ble_prof_select((active_profile + PROFILE_COUNT - 1) % PROFILE_COUNT);
 };
 
 bt_addr_le_t *zmk_ble_active_profile_addr() { return &profiles[active_profile].peer; }
@@ -325,9 +310,8 @@ static int ble_profiles_handle_set(const char *name, size_t len, settings_read_c
             return -EINVAL;
         }
 
-        if (idx >= ZMK_BLE_PROFILE_COUNT) {
-            LOG_WRN("Profile address for index %d is larger than max of %d", idx,
-                    ZMK_BLE_PROFILE_COUNT);
+        if (idx >= PROFILE_COUNT) {
+            LOG_WRN("Profile address for index %d is larger than max of %d", idx, PROFILE_COUNT);
             return -EINVAL;
         }
 
@@ -467,7 +451,7 @@ static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey) {
 }
 */
 
-#if DO_PASSKEY_ENTRY
+#ifdef CONFIG_ZMK_BLE_PASSKEY_ENTRY
 
 static void auth_passkey_entry(struct bt_conn *conn) {
     char addr[BT_ADDR_LE_STR_LEN];
@@ -475,7 +459,6 @@ static void auth_passkey_entry(struct bt_conn *conn) {
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
     LOG_DBG("Passkey entry requested for %s", log_strdup(addr));
-    passkey_digit = 0;
     auth_passkey_entry_conn = bt_conn_ref(conn);
 }
 
@@ -486,14 +469,12 @@ static void auth_cancel(struct bt_conn *conn) {
 
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-#if DO_PASSKEY_ENTRY
     if (auth_passkey_entry_conn) {
         bt_conn_unref(auth_passkey_entry_conn);
         auth_passkey_entry_conn = NULL;
     }
 
     passkey_digit = 0;
-#endif
 
     LOG_DBG("Pairing cancelled: %s", log_strdup(addr));
 }
@@ -546,7 +527,7 @@ static struct bt_conn_auth_cb zmk_ble_auth_cb_display = {
     .pairing_complete = auth_pairing_complete,
 // .passkey_display = auth_passkey_display,
 
-#if DO_PASSKEY_ENTRY
+#ifdef CONFIG_ZMK_BLE_PASSKEY_ENTRY
     .passkey_entry = auth_passkey_entry,
 #endif
     .cancel = auth_cancel,
@@ -593,7 +574,7 @@ static int zmk_ble_init(const struct device *_arg) {
         bt_unpair(i, NULL);
     }
 
-    for (int i = 0; i < ZMK_BLE_PROFILE_COUNT; i++) {
+    for (int i = 0; i < PROFILE_COUNT; i++) {
         char setting_name[15];
         sprintf(setting_name, "ble/profiles/%d", i);
 
@@ -626,79 +607,32 @@ int zmk_ble_unpair_all() {
     return resp;
 };
 
-#if DO_PASSKEY_ENTRY
-
-static bool zmk_ble_numeric_usage_to_value(const zmk_key_t key, const zmk_key_t one,
-                                           const zmk_key_t zero, uint32_t *value) {
-    if (key < one || key > zero) {
-        return false;
-    }
-
-    *value = (key == zero) ? 0 : (key - one + 1);
-    return true;
-}
-
-static int zmk_ble_handle_key_user(struct zmk_keycode_state_changed *event) {
-    zmk_key_t key = event->keycode;
-
-    LOG_DBG("key %d", key);
+bool zmk_ble_handle_key_user(struct zmk_key_event *key_event) {
+    zmk_key_t key = key_event->key;
 
     if (!auth_passkey_entry_conn) {
-        LOG_DBG("No connection for passkey entry");
-        return ZMK_EV_EVENT_BUBBLE;
+        return true;
     }
 
-    if (!event->state) {
-        LOG_DBG("Key released, ignoring");
-        return ZMK_EV_EVENT_BUBBLE;
+    if (key < NUMBER_1 || key > NUMBER_0) {
+        return true;
     }
 
-    if (key == HID_USAGE_KEY_KEYBOARD_ESCAPE) {
-        bt_conn_auth_cancel(auth_passkey_entry_conn);
-        return ZMK_EV_EVENT_HANDLED;
-    }
-
-    uint32_t val;
-    if (!(zmk_ble_numeric_usage_to_value(key, HID_USAGE_KEY_KEYBOARD_1_AND_EXCLAMATION,
-                                         HID_USAGE_KEY_KEYBOARD_0_AND_RIGHT_PARENTHESIS, &val) ||
-          zmk_ble_numeric_usage_to_value(key, HID_USAGE_KEY_KEYPAD_1_AND_END,
-                                         HID_USAGE_KEY_KEYPAD_0_AND_INSERT, &val))) {
-        LOG_DBG("Key not a number, ignoring");
-        return ZMK_EV_EVENT_BUBBLE;
-    }
+    uint32_t val = (key == NUMBER_0) ? 0 : (key - NUMBER_1 + 1);
 
     passkey_entries[passkey_digit++] = val;
-    LOG_DBG("value entered: %d, digits collected so far: %d", val, passkey_digit);
 
-    if (passkey_digit == PASSKEY_DIGITS) {
+    if (passkey_digit == 6) {
         uint32_t passkey = 0;
-        for (int i = 0; i < PASSKEY_DIGITS; i++) {
-            passkey = (passkey * 10) + passkey_entries[i];
+        for (int i = 5; i >= 0; i--) {
+            passkey = (passkey * 10) + val;
         }
-
-        LOG_DBG("Final passkey: %d", passkey);
         bt_conn_auth_passkey_entry(auth_passkey_entry_conn, passkey);
         bt_conn_unref(auth_passkey_entry_conn);
         auth_passkey_entry_conn = NULL;
     }
 
-    return ZMK_EV_EVENT_HANDLED;
+    return false;
 }
-
-static int zmk_ble_listener(const zmk_event_t *eh) {
-    struct zmk_keycode_state_changed *kc_state;
-
-    kc_state = as_zmk_keycode_state_changed(eh);
-
-    if (kc_state != NULL) {
-        return zmk_ble_handle_key_user(kc_state);
-    }
-
-    return 0;
-}
-
-ZMK_LISTENER(zmk_ble, zmk_ble_listener);
-ZMK_SUBSCRIPTION(zmk_ble, zmk_keycode_state_changed);
-#endif /* DO_PASSKEY_ENTRY */
 
 SYS_INIT(zmk_ble_init, APPLICATION, CONFIG_ZMK_BLE_INIT_PRIORITY);

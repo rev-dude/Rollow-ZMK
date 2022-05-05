@@ -3,21 +3,13 @@ const path = require("path");
 module.exports = {
   title: "ZMK Firmware",
   tagline: "Modern, open source keyboard firmware",
-  url: "https://zmk.dev",
+  url: "https://zmkfirmware.dev",
   baseUrl: "/",
   favicon: "img/favicon.ico",
   organizationName: "zmkfirmware", // Usually your GitHub org/user name.
   projectName: "zmk", // Usually your repo name.
-  plugins: [
-    path.resolve(__dirname, "src/docusaurus-tree-sitter-plugin"),
-    path.resolve(__dirname, "src/hardware-metadata-collection-plugin"),
-    path.resolve(__dirname, "src/hardware-schema-typescript-plugin"),
-    path.resolve(__dirname, "src/setup-script-generation-plugin"),
-  ],
+  plugins: [path.resolve(__dirname, "src/docusaurus-tree-sitter-plugin")],
   themeConfig: {
-    colorMode: {
-      respectPrefersColorScheme: true,
-    },
     googleAnalytics: {
       trackingID: "UA-145201102-2",
       anonymizeIP: true,
@@ -75,7 +67,7 @@ module.exports = {
             {
               label: "Discord",
               href:
-                (process.env.URL || "https://zmk.dev") +
+                (process.env.URL || "https://zmkfirmware.dev") +
                 "/community/discord/invite",
             },
             {

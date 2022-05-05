@@ -16,7 +16,6 @@
 #include <zmk/event_manager.h>
 #include <zmk/events/ble_active_profile_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
-#include <zmk/events/endpoint_selection_changed.h>
 
 #include <logging/log.h>
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
@@ -243,9 +242,6 @@ static void update_current_endpoint() {
 
         current_endpoint = new_endpoint;
         LOG_INF("Endpoint changed: %d", current_endpoint);
-
-        ZMK_EVENT_RAISE(new_zmk_endpoint_selection_changed(
-            (struct zmk_endpoint_selection_changed){.endpoint = current_endpoint}));
     }
 }
 

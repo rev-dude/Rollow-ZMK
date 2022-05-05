@@ -28,9 +28,6 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #define SAT_MAX 100
 #define BRT_MAX 100
 
-BUILD_ASSERT(CONFIG_ZMK_RGB_UNDERGLOW_BRT_MIN <= CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX,
-             "ERROR: RGB underglow maximum brightness is less than minimum brightness");
-
 enum rgb_underglow_effect {
     UNDERGLOW_EFFECT_SOLID,
     UNDERGLOW_EFFECT_BREATHE,
@@ -56,17 +53,6 @@ static struct rgb_underglow_state state;
 #if IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_EXT_POWER)
 static const struct device *ext_power;
 #endif
-
-static struct zmk_led_hsb hsb_scale_min_max(struct zmk_led_hsb hsb) {
-    hsb.b = CONFIG_ZMK_RGB_UNDERGLOW_BRT_MIN +
-            (CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX - CONFIG_ZMK_RGB_UNDERGLOW_BRT_MIN) * hsb.b / BRT_MAX;
-    return hsb;
-}
-
-static struct zmk_led_hsb hsb_scale_zero_max(struct zmk_led_hsb hsb) {
-    hsb.b = hsb.b * CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX / BRT_MAX;
-    return hsb;
-}
 
 static struct led_rgb hsb_to_rgb(struct zmk_led_hsb hsb) {
     double r, g, b;
@@ -119,7 +105,7 @@ static struct led_rgb hsb_to_rgb(struct zmk_led_hsb hsb) {
 
 static void zmk_rgb_underglow_effect_solid() {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        pixels[i] = hsb_to_rgb(hsb_scale_min_max(state.color));
+        pixels[i] = hsb_to_rgb(state.color);
     }
 }
 
@@ -128,7 +114,7 @@ static void zmk_rgb_underglow_effect_breathe() {
         struct zmk_led_hsb hsb = state.color;
         hsb.b = abs(state.animation_step - 1200) / 12;
 
-        pixels[i] = hsb_to_rgb(hsb_scale_zero_max(hsb));
+        pixels[i] = hsb_to_rgb(hsb);
     }
 
     state.animation_step += state.animation_speed * 10;
@@ -143,7 +129,7 @@ static void zmk_rgb_underglow_effect_spectrum() {
         struct zmk_led_hsb hsb = state.color;
         hsb.h = state.animation_step;
 
-        pixels[i] = hsb_to_rgb(hsb_scale_min_max(hsb));
+        pixels[i] = hsb_to_rgb(hsb);
     }
 
     state.animation_step += state.animation_speed;
@@ -155,7 +141,7 @@ static void zmk_rgb_underglow_effect_swirl() {
         struct zmk_led_hsb hsb = state.color;
         hsb.h = (HUE_MAX / STRIP_NUM_PIXELS * i + state.animation_step) % HUE_MAX;
 
-        pixels[i] = hsb_to_rgb(hsb_scale_min_max(hsb));
+        pixels[i] = hsb_to_rgb(hsb);
     }
 
     state.animation_step += state.animation_speed * 2;
@@ -332,26 +318,16 @@ int zmk_rgb_underglow_off() {
     return zmk_rgb_underglow_save_state();
 }
 
-int zmk_rgb_underglow_calc_effect(int direction) {
-    return (state.current_effect + UNDERGLOW_EFFECT_NUMBER + direction) % UNDERGLOW_EFFECT_NUMBER;
-}
-
-int zmk_rgb_underglow_select_effect(int effect) {
+int zmk_rgb_underglow_cycle_effect(int direction) {
     if (!led_strip)
         return -ENODEV;
 
-    if (effect < 0 || effect >= UNDERGLOW_EFFECT_NUMBER) {
-        return -EINVAL;
-    }
+    state.current_effect += UNDERGLOW_EFFECT_NUMBER + direction;
+    state.current_effect %= UNDERGLOW_EFFECT_NUMBER;
 
-    state.current_effect = effect;
     state.animation_step = 0;
 
     return zmk_rgb_underglow_save_state();
-}
-
-int zmk_rgb_underglow_cycle_effect(int direction) {
-    return zmk_rgb_underglow_select_effect(zmk_rgb_underglow_calc_effect(direction));
 }
 
 int zmk_rgb_underglow_toggle() {
@@ -395,7 +371,12 @@ struct zmk_led_hsb zmk_rgb_underglow_calc_brt(int direction) {
     struct zmk_led_hsb color = state.color;
 
     int b = color.b + (direction * CONFIG_ZMK_RGB_UNDERGLOW_BRT_STEP);
-    color.b = CLAMP(b, 0, BRT_MAX);
+    if (b < 0) {
+        b = 0;
+    } else if (b > BRT_MAX) {
+        b = BRT_MAX;
+    }
+    color.b = b;
 
     return color;
 }
