@@ -1,7 +1,7 @@
 if SHIELD_ROLLOW_LEFT
 
 config ZMK_KEYBOARD_NAME
-	default "Rollow_Mini"
+	default "Rollow"
 
 config ZMK_SPLIT_BLE_ROLE_CENTRAL
 	default y

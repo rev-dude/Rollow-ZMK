@@ -11,8 +11,6 @@
 #define COL   0
 #define COLL  1
 #define COLR  2
-#define GAM   3
-#define GAML  4
 
 / {
         behaviors {
